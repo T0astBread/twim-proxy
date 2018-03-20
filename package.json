@@ -1,0 +1,19 @@
+{
+  "name": "appofmessages-server",
+  "version": "0.1.0-idk",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon"
+  },
+  "author": "T0astBread",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.4",
+    "express": "^4.16.3",
+    "promise-conditional": "^1.2.0"
+  },
+  "devDependencies": {
+    "nodemon": "^1.17.2"
+  }
+}
