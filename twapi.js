@@ -2,13 +2,15 @@ var conditional = require('promise-conditional')
 const twauth = require("./twauth")
 const dummy = require("./dummy-data")
 
+const authenticate = () => "haa"
+
 let ownUserInfo = undefined
 
-const loadOwnUserInfo = () => new Promise((resolve, reject) => {
+const loadOwnUserInfo = credentials => new Promise((resolve, reject) => {
     if(ownUserInfo) {
         resolve(ownUserInfo)
     }
-    else twauth.request("GET", "/1.1/account/verify_credentials.json")
+    else twauth.request("GET", "/1.1/account/verify_credentials.json", credentials)
         .then(info => resolve(ownUserInfo = info))
         .then(() => console.log("Successfully loaded own user info"))
         .catch(err => reject(err))
@@ -16,12 +18,12 @@ const loadOwnUserInfo = () => new Promise((resolve, reject) => {
 
 const userInfoCache = []
 
-const loadUserInfo = userId => new Promise((resolve, reject) => {
-    loadOwnUserInfo()
+const loadUserInfo = (userId, credentials) => new Promise((resolve, reject) => {
+    loadOwnUserInfo(credentials)
         .then(ownInfo => {
             if(ownInfo.id_str === userId) resolve(ownInfo)
             else if(userInfoCache[userId]) resolve(userInfoCache[userId])
-            else twauth.request("GET", "/1.1/users/show.json", {user_id: userId})
+            else twauth.request("GET", "/1.1/users/show.json", credentials, {user_id: userId})
                 .then(response => {
                     userInfoCache[userId] = response
                     console.log("Chached user: " + userId)
@@ -31,24 +33,18 @@ const loadUserInfo = userId => new Promise((resolve, reject) => {
         })
 })
 
-const getUserHandle = userId => new Promise((resolve, reject) => {
-    loadUserInfo(userId)
-        .then(info => resolve(info.screen_name))
-        .catch(err => reject(err))
-})
-
-const getDirectMessageEventListApiResponse = () => new Promise((resolve, reject) => {
+const getDirectMessageEventListApiResponse = credentials => new Promise((resolve, reject) => {
         resolve(dummy.directMessageEventsResponse())
         
-        // twauth.request("GET", "/1.1/direct_messages/events/list.json")
+        // twauth.request("GET", "/1.1/direct_messages/events/list.json", credentials)
         // .then(response => resolve(response))
         // .catch(err => reject(err))
 })
 
-const getConversations = apiResponse => new Promise((resolve, reject) => {
+const getConversations = (apiResponse, credentials) => new Promise((resolve, reject) => {
     const conversations = {}
 
-    loadOwnUserInfo().then(() => {
+    loadOwnUserInfo(credentials).then(() => {
 
         const processEvent = index => {
             if(index >= apiResponse.events.length) {
@@ -61,10 +57,10 @@ const getConversations = apiResponse => new Promise((resolve, reject) => {
 
             let recipientInfo, senderInfo, fromMe
             console.log(event.message_create.target.recipient_id)
-            loadUserInfo(event.message_create.target.recipient_id)
+            loadUserInfo(event.message_create.target.recipient_id, credentials)
             .then(recInfo => recipientInfo = recInfo)
             .catch(err => reject(err))
-            .then(() => loadUserInfo(event.message_create.sender_id))
+            .then(() => loadUserInfo(event.message_create.sender_id, credentials))
             .then(sInfo => senderInfo = sInfo)
             .catch(err => reject(err))
             .then(() => {
@@ -81,4 +77,4 @@ const getConversations = apiResponse => new Promise((resolve, reject) => {
     .catch(err => reject(err))
 })
 
-exports.getConversations = () => getDirectMessageEventListApiResponse().then(response => getConversations(response))
+exports.getConversations = credentials => getDirectMessageEventListApiResponse(credentials).then(response => getConversations(response, credentials))
