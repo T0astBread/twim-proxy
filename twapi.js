@@ -1,8 +1,37 @@
-var conditional = require('promise-conditional')
+const qs = require("querystring")
 const twauth = require("./twauth")
+const consumer = require("./consumer-credentials.json")
 const dummy = require("./dummy-data")
 
-const authenticate = () => "haa"
+const extractOAuthTokenParams = apiResponse => {
+    let tokens = qs.parse(apiResponse)
+    return {
+        token: tokens.oauth_token,
+        secret: tokens.oauth_token_secret,
+        userId: tokens.user_id,
+        screenName: tokens.screen_name
+    }
+}
+
+const getRequestToken = () => new Promise((resolve, reject) => {
+    // resolve(extractRequestToken(dummy.requestTokenResponse()))
+    
+    twauth.request("POST", "/oauth/request_token", null, {authParams: {oauth_callback: "http://local.t0ast.cc:3000"}, responseIsNotJSON: true})
+        .then(response => resolve(extractOAuthTokenParams(response)))
+        .catch(err => reject(err))
+})
+
+exports.getRequestToken = getRequestToken
+
+const getAccessToken = (verifier, token, secret) => new Promise((resolve, reject) => {
+    twauth.request("POST", "/oauth/access_token", {token: token, secret: secret}, {authParams: {oauth_verifier: verifier}, responseIsNotJSON: true})
+        .then(response => {
+            resolve(extractOAuthTokenParams(response))
+        })
+        .catch(err => reject(err))
+})
+
+exports.getAccessToken = getAccessToken
 
 let ownUserInfo = undefined
 
@@ -23,7 +52,7 @@ const loadUserInfo = (userId, credentials) => new Promise((resolve, reject) => {
         .then(ownInfo => {
             if(ownInfo.id_str === userId) resolve(ownInfo)
             else if(userInfoCache[userId]) resolve(userInfoCache[userId])
-            else twauth.request("GET", "/1.1/users/show.json", credentials, {user_id: userId})
+            else twauth.request("GET", "/1.1/users/show.json", credentials, {params: {user_id: userId}})
                 .then(response => {
                     userInfoCache[userId] = response
                     console.log("Chached user: " + userId)

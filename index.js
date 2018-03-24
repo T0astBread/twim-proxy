@@ -13,6 +13,43 @@ app.listen(80)
 
 app.use(cors({origin: "*"}))
 
+const handleError = (err, rq, rs) => {
+    console.log(err)
+    rs.status(500)
+    rs.send({errorCode: "Error", message: err.toString()})
+}
+
+let requestTokenSecrets = []
+
+app.route("/authenticate/requestToken")
+    .get((rq, rs) => {
+        twapi.getRequestToken()
+            .then(tokens => {
+                requestTokenSecrets[tokens.token] = tokens.secret
+                rs.send(tokens.token)
+            })
+            .catch(err => handleError(err, rq, rs))
+    })
+
+app.route("/authenticate/accessToken")
+    .get((rq, rs) => {
+        if(!(rq.query.verifier && rq.query.token)) {
+            rs.status(400)
+            rs.send({errorCode: "MissingParams", message: "One or more query parameters are missing"})
+            return
+        }
+        let secret = requestTokenSecrets[rq.query.token]
+        console.log("token: " + rq.query.token, "\nsecret: " + secret)
+        if(typeof secret !== "string") {
+            rs.status(400)
+            rs.send({errorCode: "InvalidRequestToken", message: "The provided request token is not valid (anymore)"})
+            return
+        }
+        twapi.getAccessToken(rq.query.verifier, rq.query.token, secret)
+            .then(tokens => rs.send(tokens))
+            .catch(err => handleError(err, rq, rs))
+    })
+
 app.route("/list")
     .get((rq, rs) => {
         rs.setHeader("Content-Type", "application/json")
