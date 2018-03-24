@@ -1,6 +1,7 @@
 const express = require("express")
 const cors = require("cors")
 const https = require("https")
+const host = require("./host.json")
 const rqauth = require("./rqauth")
 const twauth = require("./twauth")
 const twapi = require("./twapi")
@@ -11,7 +12,7 @@ const twapi = require("./twapi")
 const app = express()
 app.listen(80)
 
-app.use(cors({origin: "*"}))
+app.use(cors({methods: ["GET", "POST"], origin: host.origin}))
 
 const handleError = (err, rq, rs) => {
     console.log(err)
