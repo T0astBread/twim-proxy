@@ -16,7 +16,7 @@ const extractOAuthTokenParams = apiResponse => {
 const getRequestToken = () => new Promise((resolve, reject) => {
     // resolve(extractRequestToken(dummy.requestTokenResponse()))
     
-    twauth.request("POST", "/oauth/request_token", null, {authParams: {oauth_callback: "http://local.t0ast.cc:3000"}, responseIsNotJSON: true})
+    twauth.request("POST", "/oauth/request_token", null, {responseIsNotJSON: true})
         .then(response => resolve(extractOAuthTokenParams(response)))
         .catch(err => reject(err))
 })
