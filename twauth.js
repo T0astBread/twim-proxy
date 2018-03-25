@@ -1,6 +1,7 @@
 const crypto = require("crypto")
 const https = require("https")
 const qs = require("querystring")
+const logger = require("./logger")
 const consumer = require("./consumer-credentials.json")
 const dummy = require("./dummy-data")
 
@@ -61,7 +62,17 @@ const createRequestOptions = (requestMethod, path, credentials, options) => {
 
 exports.createRequestOptions = createRequestOptions
 
-exports.request = (method, path, credentials, options) => new Promise((resolve, reject) => {
+exports.request = (method, path, credentials, options, causingEvent) => new Promise((resolve, reject) => {
+    const evtOptions = Object.assign({}, options)
+    if(evtOptions.authParams) evtOptions.authParams = Object.keys(evtOptions.authParams)
+    const rqEvent = logger.logEvent(causingEvent, {
+        type: "outgoing-request",
+        method: method,
+        path: path,
+        requestingUser: credentials ? credentials.userId : undefined,
+        options: evtOptions
+    })
+
     options = options || {}
     let params = options.params
     let paramsStr = params ? qs.stringify(params) : undefined
@@ -70,21 +81,6 @@ exports.request = (method, path, credentials, options) => new Promise((resolve, 
     let request = https.request(rqOptions, res => {
         let responseBuffer = []
         res.on("data", chunk => responseBuffer.push(chunk))
-        // res.on("end", () => {
-        //     let response = responseBuffer.join()
-        //     if(options.responseIsNotJSON == undefined || options.responseIsNotJSON === false) {
-        //         try {
-        //             let responseObj = JSON.parse(response)
-        //             if(responseObj.errors) reject(responseObj)
-        //             else resolve(responseObj)
-        //         }
-        //         catch(e) {
-        //             console.log("Faulty response", response)
-        //             reject(e)
-        //         }
-        //     }
-        //     else resolve(response)
-        // })
         res.on("end", () => {
             let response = responseBuffer.join()
             if(res.statusCode !== 200) reject(response)
@@ -93,7 +89,11 @@ exports.request = (method, path, credentials, options) => new Promise((resolve, 
                 resolve(JSON.parse(response))
             }
             catch(e) {
-                console.log("Faulty response", response)
+                logger.logEvent(rqEvent, {
+                    level: "error",
+                    errorCode: "faulty-response",
+                    response: response
+                })
                 reject(e)
             }
         })

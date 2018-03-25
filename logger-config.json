@@ -1,0 +1,5 @@
+{
+    "saveTriggers": [],
+    "savePath": "logs/%startdate/log-%logdate.json",
+    "saveInterval": 3600
+}
